@@ -12,7 +12,7 @@ import (
 
 func main() {
 	if len(os.Args) == 1 {
-		fmt.Fprintf(os.Stderr, "Usage: %s <path-to-unix-socket>", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s <path-to-unix-socket>\n", os.Args[0])
 		os.Exit(1)
 	}
 

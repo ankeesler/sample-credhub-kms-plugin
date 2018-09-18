@@ -60,7 +60,11 @@ func (g *Plugin) Encrypt(ctx context.Context, request *pb.EncryptRequest) (*pb.E
 }
 
 func (g *Plugin) Decrypt(ctx context.Context, request *pb.DecryptRequest) (*pb.DecryptResponse, error) {
-	return &pb.DecryptResponse{Plain: []byte("")}, nil
+	plain, err := base64.StdEncoding.DecodeString(string(request.Cipher))
+	if err != nil {
+		return nil, err
+	}
+	return &pb.DecryptResponse{Plain: plain}, nil
 }
 
 func (g *Plugin) mustServeKMSRequests() {
