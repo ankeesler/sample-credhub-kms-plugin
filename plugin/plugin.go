@@ -3,6 +3,7 @@ package plugin
 import (
 	"encoding/base64"
 	"fmt"
+	"google.golang.org/grpc/credentials"
 	"net"
 	"os"
 	"strings"
@@ -25,13 +26,18 @@ const (
 
 type Plugin struct {
 	pathToUnixSocket string
+	pathToPublicKeyFile string
+	pathToPrivateKeyFile string
 	net.Listener
 	*grpc.Server
+
 }
 
-func New(pathToUnixSocketFile string) (*Plugin, error) {
+func New(pathToUnixSocketFile string, publicKeyFile string, privateKeyFile string) (*Plugin, error) {
 	plugin := new(Plugin)
 	plugin.pathToUnixSocket = pathToUnixSocketFile
+	plugin.pathToPublicKeyFile = publicKeyFile
+	plugin.pathToPrivateKeyFile = privateKeyFile
 	return plugin, nil
 }
 
@@ -55,11 +61,13 @@ func (g *Plugin) Version(ctx context.Context, request *pb.VersionRequest) (*pb.V
 }
 
 func (g *Plugin) Encrypt(ctx context.Context, request *pb.EncryptRequest) (*pb.EncryptResponse, error) {
+	fmt.Printf("Called for encryption; request: %v\n", request)
 	response := base64.StdEncoding.EncodeToString(request.Plain)
 	return &pb.EncryptResponse{Cipher: []byte(response)}, nil
 }
 
 func (g *Plugin) Decrypt(ctx context.Context, request *pb.DecryptRequest) (*pb.DecryptResponse, error) {
+	fmt.Printf("Called for decryption; request: %v\n", request)
 	plain, err := base64.StdEncoding.DecodeString(string(request.Cipher))
 	if err != nil {
 		return nil, err
@@ -84,7 +92,6 @@ func (g *Plugin) mustServeRPC() {
 	glog.Infof("Serving gRPC")
 }
 
-
 func (g *Plugin) setupRPCServer() error {
 	if err := g.cleanSockFile(); err != nil {
 		return err
@@ -97,7 +104,8 @@ func (g *Plugin) setupRPCServer() error {
 	g.Listener = listener
 	glog.Infof("Listening on unix domain socket: %s", g.pathToUnixSocket)
 
-	g.Server = grpc.NewServer()
+	creds, _ := credentials.NewServerTLSFromFile(g.pathToPublicKeyFile, g.pathToPrivateKeyFile)
+	g.Server = grpc.NewServer(grpc.Creds(creds))
 	pb.RegisterKeyManagementServiceServer(g.Server, g)
 
 	return nil

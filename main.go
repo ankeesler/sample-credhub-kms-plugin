@@ -11,12 +11,12 @@ import (
 )
 
 func main() {
-	if len(os.Args) == 1 {
-		fmt.Fprintf(os.Stderr, "Usage: %s <path-to-unix-socket>\n", os.Args[0])
+	if len(os.Args) < 3  {
+		fmt.Fprintf(os.Stderr, "Usage: %s <path-to-unix-socket> <public-key> <private-key> \n", os.Args[0])
 		os.Exit(1)
 	}
 
-	p, err := plugin.New(os.Args[1])
+	p, err := plugin.New(os.Args[1], os.Args[2], os.Args[3])
 	if err != nil {
 		log.Fatal(err)
 	}
