@@ -61,11 +61,13 @@ func (g *Plugin) Version(ctx context.Context, request *pb.VersionRequest) (*pb.V
 }
 
 func (g *Plugin) Encrypt(ctx context.Context, request *pb.EncryptRequest) (*pb.EncryptResponse, error) {
+	fmt.Printf("Called for encryption; request: %v\n", request)
 	response := base64.StdEncoding.EncodeToString(request.Plain)
 	return &pb.EncryptResponse{Cipher: []byte(response)}, nil
 }
 
 func (g *Plugin) Decrypt(ctx context.Context, request *pb.DecryptRequest) (*pb.DecryptResponse, error) {
+	fmt.Printf("Called for decryption; request: %v\n", request)
 	plain, err := base64.StdEncoding.DecodeString(string(request.Cipher))
 	if err != nil {
 		return nil, err
