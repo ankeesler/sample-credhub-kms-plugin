@@ -12,6 +12,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	pb "github.com/pivotal/sample-credhub-kms-plugin/v1beta1"
 )
@@ -19,9 +20,14 @@ import (
 var _ = Describe("Main", func() {
 	var startServer func(args ...string) *gexec.Session
 	var socketAddr string
+	var publicCert string
+	var privateKey string
 	BeforeEach(func() {
 		executablePath, err := gexec.Build("github.com/pivotal/sample-credhub-kms-plugin")
 		Expect(err).NotTo(HaveOccurred())
+
+		publicCert = "./test/grpc_tls_test_cert.pem"
+		privateKey = "./test/grpc_tls_test_key.pem"
 
 		startServer = func(args ...string) *gexec.Session {
 			cmd := exec.Command(executablePath, args...)
@@ -41,14 +47,18 @@ var _ = Describe("Main", func() {
 	})
 
 	It("Starts the CLI", func() {
-		session := startServer(socketAddr)
+		session := startServer(socketAddr, publicCert, privateKey)
 		Eventually(session.Err).Should(gbytes.Say("Listening on unix domain socket"))
 
-		c, err := grpc.Dial("unix://" + socketAddr, grpc.WithInsecure())
+		creds, err := credentials.NewClientTLSFromFile(publicCert, "localhost")
 		Expect(err).NotTo(HaveOccurred())
 
-		client := pb.NewKeyManagementServiceClient(c)
-		response, err := client.Encrypt(context.Background(), &pb.EncryptRequest{Plain:[]byte("Test")})
+		channel, err := grpc.Dial("unix://"+socketAddr, grpc.WithTransportCredentials(creds))
+		Expect(err).NotTo(HaveOccurred())
+
+		client := pb.NewKeyManagementServiceClient(channel)
+
+		response, err := client.Encrypt(context.Background(), &pb.EncryptRequest{Plain: []byte("Test")})
 		Expect(err).NotTo(HaveOccurred())
 
 		verifyResp := base64.StdEncoding.EncodeToString([]byte("Test"))
@@ -56,7 +66,7 @@ var _ = Describe("Main", func() {
 	})
 
 	It("exits gracefully when it receives a terminate signal", func() {
-		session := startServer(socketAddr)
+		session := startServer(socketAddr, publicCert, privateKey)
 		Eventually(session.Err).Should(gbytes.Say("Listening on unix domain socket"))
 
 		session.Terminate()
@@ -65,7 +75,7 @@ var _ = Describe("Main", func() {
 	})
 
 	It("exits gracefully when it receives an interrupt signal", func() {
-		session := startServer(socketAddr)
+		session := startServer(socketAddr, publicCert, privateKey)
 		Eventually(session.Err).Should(gbytes.Say("Listening on unix domain socket"))
 
 		session.Interrupt()
@@ -77,9 +87,7 @@ var _ = Describe("Main", func() {
 		It("prints a usage message", func() {
 			session := startServer()
 			Eventually(session).Should(gexec.Exit(1))
-			Expect(session.Err).To(gbytes.Say("Usage: .* <path-to-unix-socket>"))
+			Expect(session.Err).To(gbytes.Say("Usage: .* <path-to-unix-socket> <public-key> <private-key>"))
 		})
 	})
 })
-
-
