@@ -62,14 +62,17 @@ func (g *Plugin) Version(ctx context.Context, request *pb.VersionRequest) (*pb.V
 
 func (g *Plugin) Encrypt(ctx context.Context, request *pb.EncryptRequest) (*pb.EncryptResponse, error) {
 	response := base64.StdEncoding.EncodeToString(request.Plain)
+	glog.Infof("Encrypting, %s. Full request: %s", string(request.Plain), request.String())
 	return &pb.EncryptResponse{Cipher: []byte(response)}, nil
 }
 
 func (g *Plugin) Decrypt(ctx context.Context, request *pb.DecryptRequest) (*pb.DecryptResponse, error) {
+	glog.Infof("Decrypting, %s. Full requestL %s", string(request.Cipher), request.String())
 	plain, err := base64.StdEncoding.DecodeString(string(request.Cipher))
 	if err != nil {
 		return nil, err
 	}
+	glog.Infof("Decrypted, %s", string(plain))
 	return &pb.DecryptResponse{Plain: plain}, nil
 }
 
